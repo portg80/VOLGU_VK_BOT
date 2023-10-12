@@ -1,27 +1,14 @@
 import vk_api
 import utils
 from vk_api.bot_longpoll import VkBotEventType, VkBotLongPoll
-from models import User
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
-
 import re
-import schedule
-import models
-
-from datetime import datetime, timedelta
-import asyncio
-import requests
 import time
-import sqlite3
-import os
-import json
 import threading
 from threading import *
-import random
-import datetime
 import otvets
-import Date_FX
+
 
 access_token = "vk1.a.K0JCI9N8utAHXJ85DWhl8YLfjZ1jzTzTz8fJSQk5oyXaeU-WHZutV9iVJVObi1NgPpDDgeOWkIaW6_xBSIzgqZEio3QY1aAUApPYl3gweuo-Vv3STHCLiweMMShHu4cxdmpwWJ7yqSwVyWQ2kbqNYN0lISHoNEFchEC92lNhFnzwAVZeGn6Ti5rM_kvnd-VpZ8F2mxm-xWy4CvtzuZIO6A"
 groupID = 222880805
@@ -81,106 +68,110 @@ class VkBot:
                   "ERROR !2 Произошла какая то непонятная херня с индексом в \\fwd = self.vk_session.method('messages.getByConversationMessageId'\\")
             return -11
 
-        if user.vk_id == admin_id:
-            try:
-                if text.lower() == otvets.kikUserCmd or text.lower() == otvets.banUserCmd:
+        conversation_info = self.vk_session.method("messages.getConversationMembers",{
+            'peer_id': msg['peer_id'] - 2000000000})
 
-                    if 'reply_message' in fwd:
-                        fwd = fwd['reply_message']
-                    else:
-                        fwd = None
-                        VkBot().sendMessage(event,
-                                            "Неправильное использование команды. Человек для призыва не найден 👀")
-                        return -11
-
-                    if fwd['from_id'] != admin_id:
-                        self.vk_session.method('messages.removeChatUser', {
-                            'user_id': fwd['from_id'],
-                            'chat_id': msg['peer_id'] - 2000000000
-                        })
-                    else:
-                        VkBot().sendMessage(event, "Это админ, его нельзя в бан, ибо он бессмертный..")
-                        return -11
-
-                ### r"!пред(=\d+)?"
-                ### r"!репорт(=\d+)?"
-                ### r"!report(=\d+)?"
-                elif re.match(otvets.varnCmd_1, text.lower()) or re.match(otvets.varnCmd_2, text.lower()) or re.match(
-                        otvets.varnCmd_3, text.lower()):
-                    if 'reply_message' in fwd:
-                        fwd = fwd['reply_message']
-                    else:
-                        fwd = None
-                        VkBot().sendMessage(event,
-                                            "Неправильное использование команды. Человек для призыва не найден 👀")
-                        return -11
-
-                    if not re.search(r"=\d+", text.lower()):
-                        if fwd['from_id'] != admin_id:
-
-                            fwd_user = utils.get_user_by_id(fwd['from_id'])
-                            fwd_user.warns += 1
-                            fwd_user.save()
-                            user_name = self.vk_session.method('users.get', {'user_id': fwd_user.vk_id})[0][
-                                'first_name']
-                            print(user_name)
-                            self.vk_session.method('messages.send', {
-                                'chat_id': msg['peer_id'] - 2000000000,
-                                'message': f'{user_name}, ты, шавка, ловишь повестку!\nВсего повесток: {fwd_user.warns}/5 🥳',
-                                'random_id': 0
-                            })
-
-                            if fwd_user.warns >= 5:
-                                self.vk_session.method('messages.removeChatUser', {
-                                    'user_id': fwd_user.vk_id,
-                                    'chat_id': msg['peer_id'] - 2000000000
-                                })
-
-                        else:
-                            VkBot().sendMessage(event, "Это админ, его нельзя в бан, ибо он бессмертный..")
-                            return -11
-                    else:
-                        fwd_user = None
-                        fwd_user = utils.get_user_by_id(fwd['from_id'])
+        # Проверка прав отправителя сообщения
+        for member in conversation_info['profiles']:
+            if member['id'] == msg['from_id']:
+                if member['is_admin']:
+                    if user.vk_id == admin_id:
                         try:
-                            split_text = text.split("=")
-                            number = int(split_text[1])
-                        except (IndexError, ValueError):
-                            number = 0
+                            if text.lower() == otvets.kikUserCmd or text.lower() == otvets.banUserCmd:
 
-                        if number >= 1:
-                            fwd_user.warns = number
-                            print("Число после '=':", number)
-                            fwd_user.save()
-                        else:
-                            fwd_user.warns = 0
-                            print("Число после '=':", number)
-                            VkBot().sendMessage(event, "значение репортов обнулено")
-                            fwd_user.save()
+                                if 'reply_message' in fwd:
+                                    fwd = fwd['reply_message']
+                                else:
+                                    fwd = None
+                                    VkBot().sendMessage(event,
+                                                        "Неправильное использование команды. Человек для призыва не найден 👀")
+                                    return -11
+
+                                if fwd['from_id'] != admin_id:
+                                    self.vk_session.method('messages.removeChatUser', {
+                                        'user_id': fwd['from_id'],
+                                        'chat_id': msg['peer_id'] - 2000000000
+                                    })
+                                else:
+                                    VkBot().sendMessage(event, "Это админ, его нельзя в бан, ибо он бессмертный..")
+                                    return -11
+
+                            ### r"!пред(=\d+)?"
+                            ### r"!репорт(=\d+)?"
+                            ### r"!report(=\d+)?"
+                            elif re.match(otvets.varnCmd_1, text.lower()) or re.match(otvets.varnCmd_2, text.lower()) or re.match(
+                                    otvets.varnCmd_3, text.lower()):
+                                if 'reply_message' in fwd:
+                                    fwd = fwd['reply_message']
+                                else:
+                                    fwd = None
+                                    VkBot().sendMessage(event,
+                                                        "Неправильное использование команды. Человек для призыва не найден 👀")
+                                    return -11
+
+                                if not re.search(r"=\d+", text.lower()):
+                                    if fwd['from_id'] != admin_id:
+
+                                        fwd_user = utils.get_user_by_id(fwd['from_id'])
+                                        fwd_user.warns += 1
+                                        fwd_user.save()
+                                        user_name = self.vk_session.method('users.get', {'user_id': fwd_user.vk_id})[0][
+                                            'first_name']
+                                        print(user_name)
+                                        self.vk_session.method('messages.send', {
+                                            'chat_id': msg['peer_id'] - 2000000000,
+                                            'message': f'{user_name}, ты, шавка, ловишь повестку!\nВсего повесток: {fwd_user.warns}/5 🥳',
+                                            'random_id': 0
+                                        })
+
+                                        if fwd_user.warns >= 5:
+                                            self.vk_session.method('messages.removeChatUser', {
+                                                'user_id': fwd_user.vk_id,
+                                                'chat_id': msg['peer_id'] - 2000000000
+                                            })
+
+                                    else:
+                                        VkBot().sendMessage(event, "Это админ, его нельзя в бан, ибо он бессмертный..")
+                                        return -11
+                                else:
+                                    fwd_user = None
+                                    fwd_user = utils.get_user_by_id(fwd['from_id'])
+                                    try:
+                                        split_text = text.split("=")
+                                        number = int(split_text[1])
+                                    except (IndexError, ValueError):
+                                        number = 0
+
+                                    if number >= 1:
+                                        fwd_user.warns = number
+                                        print("Число после '=':", number)
+                                        fwd_user.save()
+                                    else:
+                                        fwd_user.warns = 0
+                                        print("Число после '=':", number)
+                                        VkBot().sendMessage(event, "значение репортов обнулено")
+                                        fwd_user.save()
+                                        return -11
+
+                                    user_name = self.vk_session.method('users.get', {'user_id': fwd_user.vk_id})[0]['first_name']
+                                    print(user_name)
+                                    self.vk_session.method('messages.send', {
+                                        'chat_id': msg['peer_id'] - 2000000000,
+                                        'message': f'{user_name}, Военком тут немного подумал..!\nВсего повесток: {fwd_user.warns}/5 🥳',
+                                        'random_id': 0
+                                    })
+                                    if fwd_user.warns >= 5:
+                                        self.vk_session.method('messages.removeChatUser', {
+                                            'user_id': fwd['from_id'],
+                                            'chat_id': msg['peer_id'] - 2000000000
+                                        })
+                        except Exception as ex:
+                            if "935" in str(ex):
+                                VkBot().sendMessage(event, "пользователя нет в группе")
+                            else:
+                                VkBot().sendMessage(event, "Робот? Человек? Птеродактиль?")
+                            print(ex, "ERROR !1 Попытка использовать функции репорта не на человека")
                             return -11
-
-                        user_name = self.vk_session.method('users.get', {'user_id': fwd_user.vk_id})[0]['first_name']
-                        print(user_name)
-                        self.vk_session.method('messages.send', {
-                            'chat_id': msg['peer_id'] - 2000000000,
-                            'message': f'{user_name}, Военком тут немного подумал..!\nВсего повесток: {fwd_user.warns}/5 🥳',
-                            'random_id': 0
-                        })
-                        if fwd_user.warns >= 5:
-                            self.vk_session.method('messages.removeChatUser', {
-                                'user_id': fwd['from_id'],
-                                'chat_id': msg['peer_id'] - 2000000000
-                            })
-
-
-
-            except Exception as ex:
-                if "935" in str(ex):
-                    VkBot().sendMessage(event, "пользователя нет в группе")
-                else:
-                    VkBot().sendMessage(event, "Робот? Человек? Птеродактиль?")
-                print(ex, "ERROR !1 Попытка использовать функции репорта не на человека")
-                return -11
 
     def CHECK_MESSAGE(self):
         print("фоновая проверка сообщений активирована")
@@ -212,16 +203,13 @@ class VkBot:
             # Создаем экземпляр планировщика
             scheduler = BlockingScheduler()
             # Задаем расписание выполнения функции
-            trigger = CronTrigger(day_of_week='wed', hour=15, minute=35)
+            trigger = CronTrigger(day_of_week='sun', hour=18, minute=0)
 
             scheduler.add_job(editchatname_thread.start, trigger)
             # Запускаем планировщик
             # scheduler.start()
             scheduler_thread = threading.Thread(target=scheduler.start,
                                                 args=(event, msg['peer_id'], "хуита", 1))
-
-            # schedule.every().day.at(timeRen).do(VkBot().editchatname, event, msg['peer_id'], "хуита"). \
-            #    tag(getattr(schedule.every(), day_of_weekRen))
             print("Планировщик конец")
             time.sleep(10)
 
@@ -411,14 +399,3 @@ if __name__ == '__main__':
     input()
     # from vkwave.bots import SimpleLongPollBot, SimpleBotEvent
     # from vkwave.bots.utils.uploaders import PhotoUploader
-
-# Инициализация API
-
-###bot = SimpleLongPollBot(tokens = acces_token, group_id = 222880805)#id группы сообщества вк
-###@bot.message_handler(bot.regex_filter(r'(?i)(.*?)спасибо(.*?)'))
-###async def greet(event: SimpleBotEvent) -> str:
-###    return "Отсоси!"
-###@bot.message_handler(bot.text_filter(["привет","Здарова","хай"]))
-###async def greet(event: SimpleBotEvent) -> str:
-###    await event.answer('Привет!')
-###bot.run_forever()
